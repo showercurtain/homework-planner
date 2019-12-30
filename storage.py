@@ -2,6 +2,8 @@
 
 import sqlite3 as sql
 from datetime import date
+from datetime import datetime as time
+import os
 
 ## class used for storing data about homework
 class Homework(object):
@@ -69,24 +71,41 @@ class User(object):
                 print("    ",end='')
                 print(j.name+", Due "+j.due.strftime("%B %m, %Y"))
 
-showercurtain = User("My Name",10)
-
-showercurtain.addclass("Fezziks")
-showercurtain.addclass("Book Reading Period")
-showercurtain.addclass("Evil Numbers Class")
-
-showercurtain.addhomework("Fezziks","Two's Day",date(2022,2,22))
-showercurtain.addhomework(0,"Cold Fusion",date(1989,3,25))
-showercurtain.addhomework("Fezziks","Program",date(2019,12,27))
-showercurtain.addhomework(2,"Problem Set 14159265",date(2020,3,14))
-showercurtain.addhomework(1,"Read \"A Brief History of Time\", by Stephen Hawking",date(2018,11,16))
-showercurtain.addhomework("Book Reading Period","Finish writing short, 573 page composition about books",date(2019,12,26))
-
-showercurtain.completehomework(0,"Two's Day",98)
-showercurtain.completehomework(0,2,19)
-showercurtain.completehomework("Fezziks",1,2)
-showercurtain.completehomework(2,0,99)
-showercurtain.completehomework(1,1,2)
-showercurtain.completehomework(1,0)
-
-showercurtain.listhomework()
+def data_out(filename,data):
+    if os.path.exists(filename):
+        os.remove(filename)
+    db = sql.connect(filename)
+    c = db.cursor()
+    c.execute("CREATE TABLE students (myid int,stname string,grade int)")
+    c.execute("CREATE TABLE classes  (theid int,clname string,stid int)")
+    c.execute("CREATE TABLE homework (       hwname string,clid int,duedate string,date string,percent int)")
+    classno = 0
+    for i in range(len(data)):
+        c.execute("INSERT INTO students VALUES (?,?,?)",(i,data[i].name,data[i].grade))
+        for j in data[i].classes.keys():
+            c.execute("INSERT INTO classes VALUES (?,?,?)",(classno,j,i))
+            for k in data[i].classes[j]:
+                c.execute("INSERT INTO homework VALUES (?,?,?,?,?)",(k.name,classno,k.due.strftime("%D"),k.assigned.strftime("%D"),k.completed))
+            classno += 1
+    db.commit()
+    db.close()
+def data_in(filename):
+    db = sql.connect(filename)
+    c = db.cursor()
+    data = []
+    name = 0
+    clas = 0
+    user = -1
+    rawdata = c.execute("SELECT stname,grade,clname,hwname,duedate,date,percent FROM homework JOIN classes ON homework.clid = classes.theid JOIN students ON students.myid = classes.stid").fetchall()
+    for i in rawdata:
+        if name != i[0]:
+            data.append(User(i[0],i[1]))
+            name = i[0]
+            user += 1
+        if clas != i[2]:
+            data[user].addclass(i[2])
+            clas = i[2]
+        data[user].addhomework(clas,i[3],time.strptime(i[4],"%m/%d/%y"))
+        data[user].classes[clas][len(data[user].classes[clas])-1].assigned = time.strptime(i[5],"%m/%d/%y")
+        data[user].classes[clas][len(data[user].classes[clas])-1].completed = i[6]
+    return data
