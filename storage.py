@@ -1,111 +1,58 @@
-#!/usr/bin/env
+#!/usr/bin/env python3
 
 import sqlite3 as sql
 from datetime import date
 from datetime import datetime as time
 import os
 
-## class used for storing data about homework
-class Homework(object):
-    def __init__(self, name, duedate):
-        self.name = name
-        self.due = duedate
-        self.assigned = date.today()
-        self.completed = 0
-    def complete(self,percent=100):
-        self.completed = percent
-        if self.completed >= 100:
-            self.completed = True
-
-## This is the class used to store the user's data
-class User(object):
-    def __init__(self, name, grade):
-        self.name = name
-        self.grade = grade
-        self.classes = {}
-
-    def addclass(self, name):
-        self.classes.update({name:[]})
-
-    def getclass(self,classno):
-        if type(classno) == int:
-            key = list(self.classes.keys())[classno]
-        elif type(classno) == str:
-            key = classno
+class Database:
+    def __init__(self,filename):
+        self.db = sql.connect(filename)
+        self.c = self.db.cursor()
+    def addstudent(self,name,grade):
+        my_id = self.c.execute("SELECT COUNT(*) FROM students").fetchall()[0][0]
+        self.c.execute("INSERT INTO students VALUES (?,?,?)",(my_id,name,grade))
+    def addclass(self,name,studentid):
+        the_id = self.c.execute("SELECT COUNT(*) FROM classes").fetchall()[0][0]
+        self.c.execute("INSERT INTO classes VALUES (?,?,?)",(the_id,name,studentid))
+    def addhomework(self,name,classid,duedate):
+        an_id = self.c.execute("SELECT COUNT(*) FROM classes").fetchall()[0][0]
+        self.c.execute("INSERT INTO homework VALUES (?,?,?,?,?,?)",
+                       (name,classid,duedate.strftime("%Y-%m-%d"),time.now().strftime("%Y-%m-%d"),0,an_id))
+    def completehomework(self,homeworkid,percent=100):
+        if percent==100:
+            self.c.execute("DELETE FROM homework WHERE homework.an_id == ?",(homeworkid,))
         else:
-            key = None
-        return key
-
-    def addhomework(self, classno, name, duedate):
-        key = self.getclass(classno)
-        if key:
-            self.classes[key].append(Homework(name,duedate))
-        
-    def completehomework(self, classno, homeworkno, percent=100):
-        key = self.getclass(classno)
-        if not key:
-            return None
-        if type(homeworkno) == int:
-            hw = homeworkno
-        elif type(homeworkno) == str:
-            for i in range(len(self.classes[key])):
-                if self.classes[key][i].name == homeworkno:
-                    hw = i
-                    break
-            if not hw:
-                return None
-        else:
-            return None
-        self.classes[key][hw].complete(percent)
-        if self.classes[key][hw].completed == True:
-            del self.classes[key][hw]
-            
-    def removeclass(self,classno):
-        key = self.getclass(classno)
-        del self.classes[key]
-
-    def listhomework(self):
-        for i in self.classes.keys():
-            print("Homework for",i+":")
-            for j in self.classes[i]:
-                print("    ",end='')
-                print(j.name+", Due "+j.due.strftime("%B %m, %Y"))
-
-def data_out(filename,data):
+            self.c.execute("UPDATE homework SET percent = ? WHERE homework.an_id == ?",(percent,homeworkid))
+    def removeclass(self,classid):
+        self.c.execute("DELETE FROM homework WHERE homework.cl_id == ?",(classid,))
+        self.c.execute("DELETE FROM classes WHERE classes.the_id == ?",(classid,))
+    def removestudent(self,studentid):
+        data = self.c.execute("SELECT the_id FROM classes WHERE st_id == ?",(studentid,)).fetchall()
+        for i in data:
+            self.removeclass(i[0])
+        self.c.execute("DELETE FROM students WHERE my_id == ?",(studentid,))
+    def listhomework(self,studentid):
+        data = self.c.execute("""SELECT * FROM students 
+                                 JOIN classes ON students.student_id = classes.student_id
+                                 JOIN homework ON classes.class_id = homework.class_id""").fetchall()
+        data = [(i[1],i[4],i[6],i[8],i[9],i[10]) for i in data]
+        print(data)
+    def save(self):
+        self.db.commit()
+    def close(self):
+        self.db.close()
+def newdb(filename):
     if os.path.exists(filename):
         os.remove(filename)
     db = sql.connect(filename)
     c = db.cursor()
-    c.execute("CREATE TABLE students (myid int,stname string,grade int)")
-    c.execute("CREATE TABLE classes  (theid int,clname string,stid int)")
-    c.execute("CREATE TABLE homework (       hwname string,clid int,duedate string,date string,percent int)")
-    classno = 0
-    for i in range(len(data)):
-        c.execute("INSERT INTO students VALUES (?,?,?)",(i,data[i].name,data[i].grade))
-        for j in data[i].classes.keys():
-            c.execute("INSERT INTO classes VALUES (?,?,?)",(classno,j,i))
-            for k in data[i].classes[j]:
-                c.execute("INSERT INTO homework VALUES (?,?,?,?,?)",(k.name,classno,k.due.strftime("%D"),k.assigned.strftime("%D"),k.completed))
-            classno += 1
+    c.execute("CREATE TABLE students (student_id int,name string,grade int)")
+    c.execute("CREATE TABLE classes (class_id int,name string,student_id int)")
+    c.execute("CREATE TABLE homework (name string,class_id int,duedate date,assigned date,percent int,hw_id int)")
     db.commit()
     db.close()
-def data_in(filename):
-    db = sql.connect(filename)
-    c = db.cursor()
-    data = []
-    name = 0
-    clas = 0
-    user = -1
-    rawdata = c.execute("SELECT stname,grade,clname,hwname,duedate,date,percent FROM homework JOIN classes ON homework.clid = classes.theid JOIN students ON students.myid = classes.stid").fetchall()
-    for i in rawdata:
-        if name != i[0]:
-            data.append(User(i[0],i[1]))
-            name = i[0]
-            user += 1
-        if clas != i[2]:
-            data[user].addclass(i[2])
-            clas = i[2]
-        data[user].addhomework(clas,i[3],time.strptime(i[4],"%m/%d/%y"))
-        data[user].classes[clas][len(data[user].classes[clas])-1].assigned = time.strptime(i[5],"%m/%d/%y")
-        data[user].classes[clas][len(data[user].classes[clas])-1].completed = i[6]
-    return data
+    return Database(filename)
+
+db = Database('example.db')
+db.listhomework(0)
