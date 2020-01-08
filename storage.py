@@ -33,11 +33,23 @@ class Database:
             self.removeclass(i[0])
         self.c.execute("DELETE FROM students WHERE my_id == ?",(studentid,))
     def listhomework(self,studentid):
-        data = self.c.execute("""SELECT * FROM students 
+        data = self.c.execute("""SELECT * FROM students
                                  JOIN classes ON students.student_id = classes.student_id
-                                 JOIN homework ON classes.class_id = homework.class_id""").fetchall()
+                                 JOIN homework ON classes.class_id = homework.class_id
+                                 WHERE students.student_id = ?""",(studentid,)).fetchall()
         data = [(i[1],i[4],i[6],i[8],i[9],i[10]) for i in data]
-        print(data)
+        studentname = ''
+        classname = ''
+        for i in data:
+            if studentname != i[0]:
+                print(i[0]+"'s Homework:")
+                studentname = i[0]
+            if classname != i[1]:
+                print("    Homework from",i[1])
+                classname = i[1]
+            duedate = date(int(i[3].split('-')[0]),int(i[3].split('-')[1]),int(i[3].split('-')[2]))
+            assigned = date(int(i[4].split('-')[0]),int(i[4].split('-')[1]),int(i[4].split('-')[2]))
+            print("       ",i[2]+', due',duedate.strftime('%B %d, %Y')+', assigned',assigned.strftime("%B %d, %Y")+',',str(i[5])+'% completed')
     def save(self):
         self.db.commit()
     def close(self):
@@ -53,6 +65,3 @@ def newdb(filename):
     db.commit()
     db.close()
     return Database(filename)
-
-db = Database('example.db')
-db.listhomework(0)
