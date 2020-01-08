@@ -16,14 +16,14 @@ class Database:
         the_id = self.c.execute("SELECT COUNT(*) FROM classes").fetchall()[0][0]
         self.c.execute("INSERT INTO classes VALUES (?,?,?)",(the_id,name,studentid))
     def addhomework(self,name,classid,duedate):
-        an_id = self.c.execute("SELECT COUNT(*) FROM classes").fetchall()[0][0]
+        an_id = self.c.execute("SELECT COUNT(*) FROM homework").fetchall()[0][0]
         self.c.execute("INSERT INTO homework VALUES (?,?,?,?,?,?)",
                        (name,classid,duedate.strftime("%Y-%m-%d"),time.now().strftime("%Y-%m-%d"),0,an_id))
     def completehomework(self,homeworkid,percent=100):
         if percent==100:
-            self.c.execute("DELETE FROM homework WHERE homework.an_id == ?",(homeworkid,))
+            self.c.execute("DELETE FROM homework WHERE homework.hw_id == ?",(homeworkid,))
         else:
-            self.c.execute("UPDATE homework SET percent = ? WHERE homework.an_id == ?",(percent,homeworkid))
+            self.c.execute("UPDATE homework SET percent = ? WHERE homework.hw_id == ?",(percent,homeworkid))
     def removeclass(self,classid):
         self.c.execute("DELETE FROM homework WHERE homework.cl_id == ?",(classid,))
         self.c.execute("DELETE FROM classes WHERE classes.the_id == ?",(classid,))
