@@ -2,7 +2,7 @@
 
 # import everything important from storage.py file
 import os
-exec(open(os.path.join(os.getcwd(),'storage.py')).read())
+from storage import Database
 
 db = Database('example.db')
 db.listhomework(0)
