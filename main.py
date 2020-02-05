@@ -4,5 +4,4 @@
 import os
 from storage import Database
 
-db = Database('example.db')
-db.listhomework(0)
+print("Nothing here!")
