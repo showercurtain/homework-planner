@@ -5,10 +5,16 @@ from datetime import datetime as time
 import os
 
 class Database:
-    def __init__(self,filename):
-        self._db = sql.connect(filename)
-        self._c = self._db.cursor()
-        
+    def __init__(self,filename=':memory:',connection=None):
+        if connection == None:
+            if filename == ':memory:':raise Exception
+            self._db = sql.connect(filename)
+            self._c = self._db.cursor()
+            self.filename = filename
+        else:
+            self._db = connection
+            self._c = self._db.cursor()
+            self.filename = filename
     def students(self):
         return self._c.execute("SELECT name, id FROM students").fetchall()
     
@@ -71,8 +77,25 @@ class Database:
         else:
             self._listhomework(studentid)
                     
-    def save(self):
-        self._db.commit()
+    def save(self,filename=None):
+        if filename == None:
+            if self.filename != ':memory:':
+                self._db.commit()
+        elif self.filename == filename:
+            self._db.commit()
+        elif filename != ':memory:':
+            if os.path.exists(filename):
+                os.remove(filename)
+            temp = sql.connect(filename)
+            c = temp.cursor()
+            for i in self._db.iterdump():
+                c.execute(i)
+            temp.commit()
+            self._db.close()
+            self._db = temp
+            self._c = c
+        else:
+            raise Exception
         
     def close(self):
         self._db.close()
@@ -105,14 +128,16 @@ class Database:
         else:
             return self._raw(studentid)
 
-def newdb(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
+def newdb(filename=':memory:'):
+    if filename != ':memory:':
+        if os.path.exists(filename):
+            os.remove(filename)
     db = sql.connect(filename)
     c = db.cursor()
     c.execute("CREATE TABLE students (id int,name string,grade int)")
     c.execute("CREATE TABLE classes (id int,name string,student_id int)")
     c.execute("CREATE TABLE homework (id int,name string,class_id int,duedate date,assigned date,percent int)")
+    print(list(db.iterdump()))
     db.commit()
-    db.close()
-    return Database(filename)
+    c.close()
+    return Database(filename,db)
