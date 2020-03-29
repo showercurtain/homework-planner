@@ -168,8 +168,3 @@ def newdb(filename=':memory:'):
     db.commit()
     c.close()
     return Database(filename,db)
-
-x = newdb()
-x.addstudent("Sean",9)
-x.load_veracross("sean.cowley","asdfASDF1",0)
-x.listhomework(0)
