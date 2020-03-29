@@ -112,7 +112,7 @@ class Database:
             "commit":"Log In",
             "return_to":"https://portals-embed.veracross.com/ahs/student/planner"
             }
-        data = requests.Session().post("https://portals-embed.veracross.com/ahs/login", data={"username":"sean.cowley","password":"asdfASDF1","commit":"Log In","return_to":"https://portals-embed.veracross.com/ahs/student/planner"}).text
+        data = requests.Session().post("https://portals-embed.veracross.com/ahs/login", data={"username":username,"password":password,"commit":"Log In","return_to":"https://portals-embed.veracross.com/ahs/student/planner"}).text
         data = dict(json.loads(data[data.find("Portals.Family.AssignmentPlanner.App({")+37:data.find("}]\n      });")+10].replace('rows','"rows"').replace('columns','"columns"').replace('items','"items"')))
         classes = {}
         dates = {}
